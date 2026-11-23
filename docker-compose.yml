@@ -1,0 +1,25 @@
+# Sobe o banco de dados PostgreSQL para desenvolvimento local
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stoqia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-stoqia_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-stoqia_pass}
+      POSTGRES_DB: ${DB_NAME:-stoqia_db}
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    # Volume persistente para não perder os dados quando o container parar
+    volumes:
+      - stoqia_postgres_data:/var/lib/postgresql/data
+    # Verifica se o Postgres já está pronto para aceitar conexões
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-stoqia_user} -d ${DB_NAME:-stoqia_db}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  stoqia_postgres_data:
+    driver: local
