@@ -17,7 +17,7 @@ export const dataSourceOptions: DataSourceOptions = {
   database: process.env.DB_NAME ?? 'stoqia_db',
 
   // Onde o TypeORM vai procurar as entidades. Funciona tanto com .ts em desenvolvimento quanto com .js em produção.
-  entities: [path.join(process.cwd(), '{src,dist}/**/infrastructure/entities/*.entity{.ts,.js}')],
+  entities: [path.join(process.cwd(), '{src,dist}/**/*.entity{.ts,.js}')],
 
   // Onde ficam salvas as migrations do banco
   migrations: [path.join(process.cwd(), '{src,dist}/database/migrations/*{.ts,.js}')],

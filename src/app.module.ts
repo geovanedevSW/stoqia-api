@@ -5,6 +5,7 @@ import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { dataSourceOptions } from './database/data-source';
+import { ProductsModule } from './modules/products/products.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -26,6 +27,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       appSecret: process.env.OBSERVE_APP_SECRET ?? 'YOUR_APP_SECRET',
       serviceId: 'stoqia-api',
     }),
+    // Módulo funcional de gerenciamento de produtos
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
