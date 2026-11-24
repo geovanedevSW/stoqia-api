@@ -90,6 +90,25 @@ src/
 }
 ```
 
+### Módulo de Depósitos (`/warehouses`)
+
+| Método | Rota | Descrição | Status de Sucesso |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/warehouses` | Cadastra um novo depósito | `201 Created` |
+| `GET` | `/warehouses` | Lista todos os depósitos cadastrados | `200 OK` |
+| `GET` | `/warehouses/:id` | Busca detalhes de um depósito pelo UUID | `200 OK` |
+| `PATCH` | `/warehouses/:id` | Atualiza dados parciais do depósito | `200 OK` |
+| `DELETE` | `/warehouses/:id` | Inativa um depósito (*soft delete*) | `204 No Content` |
+
+#### Exemplo de Payload para Criação (`POST /warehouses`):
+```json
+{
+  "name": "Depósito Central A",
+  "code": "DEP-A",
+  "location": "São Paulo - SP"
+}
+```
+
 ---
 
 ## 🚀 Como Executar o Projeto
