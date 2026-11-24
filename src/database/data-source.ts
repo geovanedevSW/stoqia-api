@@ -2,6 +2,7 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { config } from 'dotenv';
 import path from 'path';
 import { Product } from '../modules/products/entities/product.entity';
+import { Warehouse } from '../modules/warehouses/entities/warehouse.entity';
 
 // Carregamos o dotenv aqui porque quando rodamos migrations pelo terminal,
 // a CLI do TypeORM executa esse arquivo direto no Node, sem passar pelo NestJS.
@@ -19,7 +20,7 @@ export const dataSourceOptions: DataSourceOptions = {
 
   // Entidades registradas explicitamente. Isso evita que o Node tente carregar
   // arquivos .ts como se fossem .js em tempo de execução via glob.
-  entities: [Product],
+  entities: [Product, Warehouse],
 
   // Migrations carregadas a partir da pasta atual (__dirname).
   // Em desenvolvimento aponta para src/database/migrations, e em produção para dist/database/migrations.
