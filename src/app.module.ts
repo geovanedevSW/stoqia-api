@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { dataSourceOptions } from './database/data-source';
 import { ProductsModule } from './modules/products/products.module';
+import { WarehousesModule } from './modules/warehouses/warehouses.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -29,6 +30,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     }),
     // Módulo funcional de gerenciamento de produtos
     ProductsModule,
+    // Módulo funcional de gerenciamento de depósitos
+    WarehousesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
