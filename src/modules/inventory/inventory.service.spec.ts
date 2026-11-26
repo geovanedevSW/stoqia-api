@@ -47,11 +47,25 @@ describe('InventoryService', () => {
     isActive: true,
   } as Product;
 
+  const inactiveProduct = {
+    id: productId,
+    name: 'Smartphone Galaxy S24',
+    sku: 'SM-GAL-S24',
+    isActive: false,
+  } as Product;
+
   const activeWarehouse = {
     id: warehouseId,
     name: 'Depósito A',
     code: 'DEP-A',
     isActive: true,
+  } as Warehouse;
+
+  const inactiveWarehouse = {
+    id: warehouseId,
+    name: 'Depósito A',
+    code: 'DEP-A',
+    isActive: false,
   } as Warehouse;
 
   beforeEach(async () => {
@@ -304,10 +318,7 @@ describe('InventoryService', () => {
 
   describe('validações de produto e depósito ativos', () => {
     it('deve impedir movimentação se o produto estiver inativo', async () => {
-      productsService.findOne.mockResolvedValue({
-        ...activeProduct,
-        isActive: false,
-      } as Product);
+      productsService.findOne.mockResolvedValue(inactiveProduct);
 
       await expect(
         service.inbound({ productId, warehouseId, quantity: 1 }),
@@ -317,10 +328,7 @@ describe('InventoryService', () => {
     });
 
     it('deve impedir movimentação se o depósito estiver inativo', async () => {
-      warehousesService.findOne.mockResolvedValue({
-        ...activeWarehouse,
-        isActive: false,
-      } as Warehouse);
+      warehousesService.findOne.mockResolvedValue(inactiveWarehouse);
 
       await expect(
         service.inbound({ productId, warehouseId, quantity: 1 }),
