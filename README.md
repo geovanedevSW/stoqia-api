@@ -109,6 +109,27 @@ src/
 }
 ```
 
+### Módulo de Estoque (`/inventory`)
+
+| Método | Rota | Descrição | Status de Sucesso |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/inventory/inbound` | Registra entrada de mercadoria em um depósito | `201 Created` |
+| `POST` | `/inventory/outbound` | Registra saída de mercadoria validando saldo disponível | `201 Created` |
+| `POST` | `/inventory/adjust` | Ajusta manualmente o saldo contado com motivo obrigatório | `201 Created` |
+| `GET` | `/inventory` | Lista saldos atuais (filtros opcionais: `productId`, `warehouseId`) | `200 OK` |
+| `GET` | `/inventory/movements` | Lista o extrato auditável (filtros: `productId`, `warehouseId`, `type`) | `200 OK` |
+| `GET` | `/inventory/:id` | Busca detalhes de um item de estoque pelo UUID | `200 OK` |
+
+#### Exemplo de Payload para Entrada (`POST /inventory/inbound`):
+```json
+{
+  "productId": "11111111-1111-4111-8111-111111111111",
+  "warehouseId": "22222222-2222-4222-8222-222222222222",
+  "quantity": 10,
+  "reason": "Carga inicial de estoque"
+}
+```
+
 ---
 
 ## 🚀 Como Executar o Projeto
