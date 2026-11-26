@@ -130,6 +130,26 @@ src/
 }
 ```
 
+### Módulo de Transferências (`/transfers`)
+
+| Método | Rota | Descrição | Status de Sucesso |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/transfers` | Transfere estoque entre depósitos com lock ordenado (`FOR UPDATE`) e suporte a `Idempotency-Key` | `201 Created` |
+| `GET` | `/transfers` | Lista transferências (filtros opcionais: `productId`, `sourceWarehouseId`, `destinationWarehouseId`) | `200 OK` |
+| `GET` | `/transfers/:id` | Busca detalhes de uma transferência pelo UUID | `200 OK` |
+
+#### Exemplo de Payload para Transferência (`POST /transfers`):
+```json
+{
+  "productId": "11111111-1111-4111-8111-111111111111",
+  "sourceWarehouseId": "22222222-2222-4222-8222-222222222222",
+  "destinationWarehouseId": "33333333-3333-4333-8333-333333333333",
+  "quantity": 1,
+  "reason": "Remanejamento entre centros de distribuição",
+  "idempotencyKey": "transfer-req-001"
+}
+```
+
 ---
 
 ## 🚀 Como Executar o Projeto

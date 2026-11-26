@@ -8,6 +8,7 @@ import { dataSourceOptions } from './database/data-source';
 import { ProductsModule } from './modules/products/products.module';
 import { WarehousesModule } from './modules/warehouses/warehouses.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { TransfersModule } from './modules/transfers/transfers.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -35,6 +36,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     WarehousesModule,
     // Módulo funcional de controle de estoque e movimentações
     InventoryModule,
+    // Módulo funcional de transferências atômicas entre depósitos
+    TransfersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
