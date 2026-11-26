@@ -280,10 +280,11 @@ describe('Transfers Concurrency (e2e)', () => {
     expect(r1.status).toBe(201);
     expect(r2.status).toBe(201);
     expect(r1.body.transfer.id).toBe(r2.body.transfer.id);
-    expect([r1.body.idempotentReplay, r2.body.idempotentReplay].sort()).toEqual([
-      false,
-      true,
-    ]);
+    expect(
+      [r1.body.idempotentReplay, r2.body.idempotentReplay].sort(
+        (a: boolean, b: boolean) => Number(a) - Number(b),
+      ),
+    ).toEqual([false, true]);
 
     const [balA, balB] = await Promise.all([
       getBalance(productId, warehouseA),

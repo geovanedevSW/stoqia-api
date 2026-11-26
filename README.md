@@ -23,13 +23,43 @@ O **Stoqia API** utiliza **transações ACID** e **bloqueio pessimista no Postgr
 | :--- | :--- |
 | **Linguagem** | TypeScript (Strict Mode) |
 | **Runtime** | Node.js (v22+) |
-| **Framework** | NestJS |
+| **Framework** | NestJS 12 |
 | **Banco de Dados** | PostgreSQL 16 |
 | **ORM & Migrations** | TypeORM |
 | **Validação de Entrada** | Class Validator & Class Transformer |
 | **Containerização** | Docker & Docker Compose |
-| **Testes Automatizados** | Jest & Supertest (Unitários e E2E) |
+| **Testes Automatizados** | Jest & Supertest (Unitários e E2E de Concorrência) |
+| **Qualidade / Lint** | Oxlint (Type-Aware) & Prettier |
 | **Versionamento** | Git, GitHub & Conventional Commits |
+
+---
+
+## 🔒 Como a Concorrência e a Integridade Funcionam
+
+1. **Bloqueio Pessimista (`SELECT ... FOR UPDATE`):** toda alteração de saldo (`inbound`, `outbound`, `adjust` e `transfers`) trava a linha correspondente em `inventory_items` dentro de uma transação ACID até o `COMMIT` ou `ROLLBACK`, evitando leituras simultâneas do mesmo saldo (*race condition*).
+2. **Prevenção de Deadlock (Ordenação Determinística):** ao transferir entre dois depósitos, os UUIDs de origem e destino são ordenados lexicograficamente antes da aquisição dos locks. Se duas requisições cruzadas (`A -> B` e `B -> A`) chegarem ao mesmo tempo, ambas travam os registros na mesma ordem, eliminando ciclos de espera.
+3. **Idempotência Segura (`Idempotency-Key`):** `POST /transfers` aceita chave via header `Idempotency-Key` ou campo `idempotencyKey`, garantindo que *retries* de rede não debitem o estoque duas vezes — inclusive sob requisições paralelas via revalidação pós-lock e índice único (`UQ_transfers_idempotency_key`). Reutilizar a mesma chave com parâmetros diferentes retorna `409 Conflict`.
+4. **Defesa em Profundidade no Banco:** além das validações na aplicação, o PostgreSQL impõe `UNIQUE ("product_id", "warehouse_id")`, `CHECK ("quantity" >= 0)`, `CHECK ("source_warehouse_id" <> "destination_warehouse_id")` e `ON DELETE RESTRICT`.
+
+```mermaid
+sequenceDiagram
+    participant Op1 as Operador 1 (A -> B)
+    participant Op2 as Operador 2 (A -> C)
+    participant API as TransfersService
+    participant PG as PostgreSQL (FOR UPDATE)
+
+    Note over PG: Estoque inicial no Depósito A = 1
+    par Requisições simultâneas
+        Op1->>API: POST /transfers (qty: 1, A -> B)
+        Op2->>API: POST /transfers (qty: 1, A -> C)
+    end
+    API->>PG: Op1 adquire lock na linha (Produto, A)
+    API->>PG: Op2 aguarda liberação do lock em A
+    PG-->>API: Op1 lê saldo = 1, debita para 0, credita B e faz COMMIT
+    API-->>Op1: 201 Created (TRANSFER_OUT + TRANSFER_IN)
+    PG-->>API: Lock liberado -> Op2 lê saldo = 0
+    API-->>Op2: 409 Conflict (Estoque insuficiente)
+```
 
 ---
 
@@ -39,24 +69,28 @@ A aplicação adota o padrão **modular idiomático do NestJS**, priorizando alt
 
 ```
 src/
-├── database/               # Conexão TypeORM (DataSource) e Migrations
-│   ├── migrations/         # Migrations versionadas do banco de dados
-│   └── data-source.ts      # Configuração centralizada do banco
-├── modules/                # Módulos funcionais e independentes
-│   ├── products/           # Módulo de Produtos
-│   │   ├── dto/            # DTOs com validação (class-validator)
-│   │   ├── entities/       # Entidade TypeORM mapeando a tabela 'products'
-│   │   ├── products.controller.ts # Endpoints REST e validação de UUIDs
-│   │   ├── products.service.ts    # Regras de negócio, unicidade e persistência
-│   │   ├── products.service.spec.ts # Testes unitários do serviço
-│   │   └── products.module.ts     # Encapsulamento do módulo
-│   ├── warehouses/         # Módulo de Depósitos
-│   ├── inventory/          # Saldos e regras de entrada, saída e ajuste
-│   ├── movements/          # Histórico auditável de movimentações
-│   └── transfers/          # Orquestração de transferências concorrentes
-├── app.controller.ts       # Healthcheck inicial
-├── app.module.ts           # Módulo raiz agregador
-└── main.ts                 # Ponto de entrada e configuração do ValidationPipe
+├── database/                         # Conexão TypeORM (DataSource) e Migrations
+│   ├── migrations/                   # Migrations versionadas (products, warehouses, inventory, transfers)
+│   └── data-source.ts                # Configuração centralizada do banco (CJS + ESM)
+├── modules/                          # Módulos funcionais e independentes
+│   ├── products/                     # Catálogo global de produtos (/products)
+│   ├── warehouses/                   # Depósitos e centros de distribuição (/warehouses)
+│   ├── inventory/                    # Saldos (inventory_items) e extrato auditável (stock_movements)
+│   │   ├── dto/
+│   │   ├── entities/
+│   │   │   ├── inventory-item.entity.ts
+│   │   │   └── stock-movement.entity.ts
+│   │   ├── inventory.controller.ts
+│   │   ├── inventory.service.ts
+│   │   ├── inventory.service.spec.ts
+│   │   └── inventory.module.ts
+│   └── transfers/                    # Transferências concorrentes com lock ordenado e idempotência
+├── app.controller.ts                 # Healthcheck inicial
+├── app.module.ts                     # Módulo raiz agregador
+└── main.ts                           # Bootstrap e ValidationPipe global
+test/
+├── app.e2e-spec.ts                   # Smoke test E2E da aplicação
+└── transfers-concurrency.e2e-spec.ts # Testes E2E de concorrência real contra PostgreSQL
 ```
 
 ### Princípios Chave:
@@ -202,7 +236,12 @@ A API estará acessível em: `http://localhost:3000`
 
 ## 🧪 Suíte de Testes
 
-O projeto adota testes automatizados com Jest para garantir a confiabilidade das regras de negócio:
+O projeto combina **36 testes unitários** (regras de negócio isoladas por módulo) com **testes E2E reais contra o PostgreSQL** comprovando comportamento sob concorrência:
+
+- Disputa pela última unidade entre Depósito B e C via `Promise.all` (`201 Created` + `409 Conflict`, saldo final `0`).
+- Estresse com 10 transferências paralelas disputando 3 unidades disponíveis (`3` sucessos, `7` conflitos).
+- Transferências cruzadas simultâneas (`A -> B` e `B -> A`) sem *deadlock*.
+- Retries paralelos com a mesma `Idempotency-Key` debitando apenas uma vez.
 
 ```bash
 # Executar todos os testes unitários
@@ -214,8 +253,11 @@ npm run test:watch
 # Verificar relatório de cobertura de código
 npm run test:cov
 
-# Executar testes End-to-End (E2E)
+# Executar testes End-to-End (requer PostgreSQL ativo via docker compose up -d)
 npm run test:e2e
+
+# Verificar lint com checagem de tipos
+npm run lint
 ```
 
 ---
